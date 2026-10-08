@@ -1,0 +1,85 @@
+# Fed-GRPO Training Configuration
+experiment_name: "fed_grpo_math_Qwen2.5-3B-Instruct"
+
+# Run Configuration
+run:
+  method: "fed_grpo"
+  device: "cuda"
+  seed: 42
+  output_base: "/path/to/outputs"
+
+# Model Configuration
+model:
+  name: "Qwen/Qwen2.5-3B-Instruct"
+  cache_dir: "/path/to/model_cache"
+
+# Dataset Configuration
+dataset:
+  name: "math"
+  hard_only: false
+  split_method: "difficulty"
+  num_clients: 5
+  alpha: 0.5
+  cache_dir: "/path/to/dataset"
+
+# Training Configuration (General training & GRPO parameters)
+training:
+  # Optimization Parameters
+  per_device_train_batch_size: 2
+  learning_rate: 3.0e-6
+  gradient_accumulation_steps: 32
+  max_grad_norm: 1.0
+  warmup_ratio: 0.1
+  weight_decay: 0.0
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  lr_scheduler_type: "constant"
+  bf16: true
+
+  # Generation Parameters
+  max_prompt_length: 1024
+  max_completion_length: 2048
+
+  # GRPO Parameters
+  loss_type: "grpo"
+  num_generations: 8
+  beta_kl: 0.0
+  temperature: 1.0
+  top_p: 1.0
+  epsilon: 0.2
+  num_iterations: 1
+
+  # Training Schedule
+  num_train_epochs: 1
+  max_steps: 310
+  save_steps_freq: 10
+
+  # Reward
+  use_format_reward: false
+
+  # vLLM Acceleration
+  use_vllm: false
+  vllm_importance_sampling_correction: false
+
+# Federated Learning Configuration (for fed_grpo/fedavg/local_only)
+federated:
+  num_rounds: 12
+  save_rounds_freq: 1
+  local_steps: 5
+  aggregation: signal_weighted
+  use_effective_samples: false
+  use_update_normalization: false
+  calibration_alpha: 0.5
+  use_global_reward_calibration: true
+  global_reward_calibration_lambda: 0.5
+
+  # Communication Compression
+  compression:
+    use_compression: true
+    budget: 1.0
+    adaptive: true
+    adaptive_alpha: 0.5
+
+# Logging
+logging:
+  use_wandb: false

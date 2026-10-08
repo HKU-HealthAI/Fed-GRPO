@@ -1,0 +1,24 @@
+# Fed-GRPO Evaluation Configuration
+
+# Dataset Configuration
+dataset:
+  name: "math500"
+  cache_dir: "/path/to/dataset"
+
+# Evaluation Configuration
+evaluation:
+  eval_mode: "avg@k"
+  num_samples_per_prompt: 32
+  max_samples: null
+
+  # Generation Parameters
+  temperature: 1.0
+  top_p: 0.7
+  max_new_tokens: 4096
+
+  # vLLM Settings
+  gpu_memory_utilization: 0.9
+
+# Reward (for evaluation scoring)
+training:
+  use_format_reward: false

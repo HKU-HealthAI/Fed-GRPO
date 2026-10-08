@@ -1,0 +1,19 @@
+# Core dependencies
+torch==2.8.0
+transformers==4.56.2
+accelerate==1.4.0
+trl==0.25.1
+vllm==0.10.2
+
+# Data processing
+datasets==3.2.0
+
+# Math verification
+math-verify[antlr4_13_2]==0.9.0
+
+# Configuration
+pyyaml==6.0.2
+
+# Logging
+wandb==0.19.1
+tensorboard==2.18.0

@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# Specify the resources required (adjust according to your cluster).
+#SBATCH --nodes=1 --gres=gpu:2 --mail-type=ALL
+
+# Time limit
+#SBATCH -t 4-00:00:00
+
+# Initialize conda
+. $HOME/miniconda3/etc/profile.d/conda.sh
+conda activate fed-grpo
+
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+
+# Number of GPUs allocated by SLURM
+NUM_GPUS=${SLURM_GPUS_PER_NODE:-2}
+echo "Using $NUM_GPUS GPUs for vLLM tensor parallelism"
+
+# =============================================================================
+# Configuration
+# =============================================================================
+OUTPUT_BASE="/path/to/outputs"
+EXP_DIR="Qwen2.5-3B-Instruct_fed_grpo_kl0.0_lr3e-06_difficulty_c5_<TIMESTAMP>"
+DATASETS=("math500" "gsm8k" "aime2024" "aime2025" "amc")
+
+# =============================================================================
+# Helper function: evaluate one checkpoint on all datasets
+# =============================================================================
+evaluate_checkpoint() {
+    local CKPT_PATH="$1"
+    local RESULT_DIR="$2"
+
+    mkdir -p "$RESULT_DIR"
+
+    for DATASET in "${DATASETS[@]}"; do
+        # Skip if result already exists (for resumability)
+        if [ -f "$RESULT_DIR/${DATASET}_results.json" ]; then
+            echo "[SKIP] $RESULT_DIR/${DATASET}_results.json already exists"
+            continue
+        fi
+
+        echo "  Evaluating on ${DATASET}..."
+        python src/eval.py \
+            --checkpoint "$CKPT_PATH" \
+            --config config/eval.yaml \
+            --dataset "$DATASET" \
+            --num_gpus $NUM_GPUS \
+            --output "$RESULT_DIR/${DATASET}_results.json"
+
+        sleep 3
+    done
+}
+
+# =============================================================================
+# Evaluate experiment
+# =============================================================================
+OUTPUT_DIR="${OUTPUT_BASE}/${EXP_DIR}"
+
+echo ""
+echo "############################################################"
+echo "# Experiment: ${EXP_DIR}"
+echo "############################################################"
+
+# =============================================================================
+# 1. Evaluate intermediate checkpoints (sorted numerically by round)
+# =============================================================================
+CKPT_BASE="${OUTPUT_DIR}/checkpoints"
+
+if [ -d "$CKPT_BASE" ]; then
+    for CKPT in $(ls -d "$CKPT_BASE"/checkpoint_round_* 2>/dev/null | sort -t_ -k3 -n); do
+        ROUND_NAME=$(basename "$CKPT")
+        echo ""
+        echo "============================================================"
+        echo "Evaluating ${EXP_DIR} / ${ROUND_NAME}..."
+        echo "============================================================"
+        evaluate_checkpoint "$CKPT" "$CKPT/eval_results"
+    done
+else
+    echo "No checkpoints directory found at $CKPT_BASE"
+fi
+
+# =============================================================================
+# 2. Evaluate final checkpoint
+# =============================================================================
+FINAL_CKPT="${OUTPUT_DIR}/final_checkpoint"
+
+if [ -d "$FINAL_CKPT" ]; then
+    echo ""
+    echo "============================================================"
+    echo "Evaluating ${EXP_DIR} / final_checkpoint..."
+    echo "============================================================"
+    evaluate_checkpoint "$FINAL_CKPT" "$FINAL_CKPT/eval_results"
+else
+    echo "No final_checkpoint found at $FINAL_CKPT"
+fi
+
+echo ""
+echo "============================================================"
+echo "All evaluations completed!"
+echo "============================================================"
