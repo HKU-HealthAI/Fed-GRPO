@@ -80,7 +80,7 @@ def compress_delta(
         }
 
     # --- Step 2: Compute actual budget ---
-    if adaptive and prev_reward_stds and max(prev_reward_stds) > 0:
+    if 0 < budget < 1.0 and adaptive and prev_reward_stds and max(prev_reward_stds) > 0:
         max_rs = max(prev_reward_stds)
         ratio = reward_std / max_rs
         avg_ratio = sum(rs / max_rs for rs in prev_reward_stds) / len(prev_reward_stds)
